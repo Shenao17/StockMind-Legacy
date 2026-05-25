@@ -6,13 +6,17 @@
 
 USE stockmind_db;
 
+ALTER TABLE products 
+MODIFY COLUMN updated_at TIMESTAMP 
+DEFAULT CURRENT_TIMESTAMP 
+ON UPDATE CURRENT_TIMESTAMP;
 -- =============================================================================
 -- Usuarios iniciales
 -- Password: admin123 (BCrypt hash)
 -- =============================================================================
 INSERT INTO users (username, email, password_hash, role, active) VALUES
-('admin', 'admin@stockmind.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ADMIN', TRUE),
-('vendedor1', 'vendedor1@stockmind.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SELLER', TRUE);
+('admin', 'admin@stockmind.com', '$2a$10$I/bbLecZCx06qyaL9mjJq.8CXKDmOhWuFgSZwYv8pbx2TEarQbGm.', 'ADMIN', TRUE),
+('vendedor1', 'vendedor1@stockmind.com', '$2a$10$I/bbLecZCx06qyaL9mjJq.8CXKDmOhWuFgSZwYv8pbx2TEarQbGm.', 'SELLER', TRUE);
 
 -- =============================================================================
 -- Categorías de productos

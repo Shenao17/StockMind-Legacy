@@ -52,7 +52,7 @@ export default function Sidebar() {
           </div>
         </div>
         <button className="btn btn-ghost btn-sm btn-icon" onClick={logout} title="Cerrar sesión">
-          ⎋
+          Cerrar Sesion
         </button>
       </div>
     </aside>

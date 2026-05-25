@@ -18,7 +18,7 @@ DB_CONFIG = {
     "port":     3306,
     "database": "stockmind_db",
     "user":     "root",
-    "password": "",
+    "password": "Orvex#Admin2026!",
 }
 # Parámetros del modelo predictivo
 # Número de períodos históricos a considerar (días de historial)

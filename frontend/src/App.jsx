@@ -12,6 +12,7 @@ import Sales from './pages/Sales';
 import Reports from './pages/Reports';
 import Predictions from './pages/Predictions';
 import Users from './pages/Users';
+import AgentBubble from './components/ui/AgentBubble';
 
 const PAGE_TITLES = {
   '/dashboard':   'Dashboard',
@@ -61,6 +62,7 @@ function ProtectedLayout({ showToast }) {
           <Route path="*"            element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
+      <AgentBubble geminiApiKey="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"/>
     </div>
   );
 }

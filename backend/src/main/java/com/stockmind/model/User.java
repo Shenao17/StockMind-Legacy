@@ -11,11 +11,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import java.time.LocalDateTime;
 
-/**
- * Entidad: User
- * Representa un usuario del sistema con rol y estado de activación.
- * Los roles disponibles son ADMIN y SELLER.
- */
+
 @Entity
 @Table(name = "users")
 @Data
