@@ -651,7 +651,7 @@ export default function AgentBubble({ geminiApiKey }) {
       const isAuth  = msg.includes('API_KEY') || msg.includes('403') || msg.includes('401');
       setAgentStatus('offline');
       let friendlyMsg = '⚠️ El agente no está disponible en este momento. Intenta más tarde.';
-      if (isQuota) friendlyMsg = '⚠️ Se agotó la cuota de la API. Verifica tu plan en Google AI Studio.';
+      if (isQuota) friendlyMsg = '⚠️ Se agotó la cuota de la API.';
       if (isAuth)  friendlyMsg = '⚠️ API key inválida o sin permisos. Revisa la configuración.';
       setMessages(prev => [...prev, {
         role: 'agent',

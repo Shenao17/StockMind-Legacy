@@ -1,6 +1,6 @@
 # StockMind — Manual de Usuario
 
-**Versión:** 1.0.0  
+**Versión:** 1.2.0  
 **Audiencia:** Administradores y vendedores del sistema
 
 ---
@@ -9,7 +9,7 @@
 
 ### Iniciar sesión
 
-1. Abra el navegador y navegue a la URL del sistema (por defecto: `http://localhost:5500`)
+1. Abra el navegador y navegue a la URL del sistema (por defecto: `http://localhost:5173`)
 2. Ingrese su **nombre de usuario** y **contraseña**
 3. Haga clic en **Iniciar sesión**
 
@@ -214,6 +214,7 @@ La tabla muestra todos los usuarios del sistema con su rol, estado de activació
 | Ver predicciones | ✓ | ✓ |
 | Ver reportes | ✗ | ✓ |
 | Gestionar usuarios | ✗ | ✓ |
+| Usar el agente IA | ✓ | ✓ |
 
 ### Editar usuario
 
@@ -227,7 +228,42 @@ Haga clic en **Desactivar** para inhabilitar el acceso de un usuario sin elimina
 
 ---
 
-## 9. Alertas y notificaciones
+## 9. Agente IA *(experimental)*
+
+A partir de la versión 1.2.0, StockMind incluye un asistente de inteligencia artificial conversacional accesible desde cualquier módulo del sistema.
+
+
+⚠ El agente IA se encuentra en fase experimental. Su comportamiento puede ser inestable y sus respuestas no siempre serán precisas. No comparta información sensible, confidencial o personal a través del chat. Las respuestas del agente son orientativas y no reemplazan el criterio del usuario ni la información oficial del sistema.
+
+### Abrir el agente
+
+Haga clic en el botón flotante ubicado en la **esquina inferior derecha** de la pantalla. El panel de chat se abre con una animación y muestra el estado de conexión del agente.
+
+### Estados de conexión
+
+| Indicador | Color | Significado |
+|-----------|-------|-------------|
+| Verificando... | Amarillo | El sistema está comprobando la disponibilidad del agente |
+| En línea | Verde | El agente está disponible y listo para responder |
+| Sin conexión | Rojo | El servicio de IA no está disponible en este momento |
+
+Si el agente aparece como **sin conexión**, haga clic en **↺ Reintentar** para volver a intentar la conexión sin necesidad de recargar la página.
+
+### Usar el agente
+
+- Escriba su pregunta en el campo de texto y presione **Enter** o el botón de envío
+- Use los **chips de sugerencias** en la parte inferior del panel para hacer preguntas frecuentes con un solo clic; las sugerencias cambian automáticamente según el módulo donde se encuentre
+- El agente responde en español y adapta sus respuestas al contexto del módulo actual
+
+### Limitaciones en esta versión
+
+- El agente no tiene acceso en tiempo real a los datos del sistema; sus respuestas son orientativas y basadas en el conocimiento general de la plataforma
+- El historial de conversación no se conserva al cerrar el panel o recargar la página
+- Requiere conexión a internet para funcionar
+
+---
+
+## 10. Alertas y notificaciones
 
 ### Notificaciones tipo toast
 
@@ -243,7 +279,7 @@ Cuando uno o más productos tienen stock por debajo del mínimo configurado, apa
 
 ---
 
-## 10. Preguntas frecuentes
+## 11. Preguntas frecuentes
 
 **¿Por qué no puedo agregar más unidades al carrito?**  
 El sistema no permite vender más unidades de las disponibles en stock. Si el botón + no responde, es porque se ha alcanzado el máximo de stock disponible para ese producto.
@@ -260,6 +296,9 @@ El módulo de predicciones mostrará un mensaje de error. Los demás módulos de
 **¿Se pueden recuperar ventas eliminadas?**  
 El sistema no permite eliminar ventas. Solo se pueden cancelar cambiando el estado a CANCELLED, pero esto se hace desde la administración de base de datos directamente.
 
+**¿El agente IA tiene acceso a mis datos de ventas e inventario?**  
+No en esta versión. El agente opera de forma independiente al backend del sistema y no consulta la base de datos. Sus respuestas son orientativas basadas en el conocimiento general de la plataforma. El acceso a datos en tiempo real está previsto para una versión futura.
+
 ---
 
-*StockMind v1.0.0 — Manual de Usuario — Proyecto Académico*
+*StockMind v1.2.0 — Manual de Usuario — Proyecto Académico*

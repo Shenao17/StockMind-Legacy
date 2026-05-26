@@ -62,7 +62,7 @@ function ProtectedLayout({ showToast }) {
           <Route path="*"            element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
-      <AgentBubble geminiApiKey={import.meta.env.VITE_GROQ_API_KEY} />
+      <AgentBubble geminiApiKey="######"/>
     </div>
   );
 }

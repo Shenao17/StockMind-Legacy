@@ -1,6 +1,6 @@
 # StockMind — Manual Técnico
 
-**Versión:** 1.0.0  
+**Versión:** 1.2.0  
 **Clasificación:** Documentación técnica interna  
 **Audiencia:** Desarrolladores, administradores de sistemas
 
@@ -10,12 +10,16 @@
 
 StockMind es un sistema distribuido compuesto por cuatro componentes independientes que se comunican mediante HTTP/REST. Ningún componente accede directamente a la base de datos de otro; MySQL es el único almacén de datos compartido, accedido por Java (lógica de negocio) y Python (analítica de solo lectura + escritura de predicciones).
 
+A partir de la v1.2.0, el frontend incorpora un componente de agente IA (`AgentBubble`) que realiza llamadas directas a la API de Groq desde el navegador. Este componente es el único que opera fuera del gateway Node.js.
+
 ```
-Frontend (estático) → Gateway Node.js :3000
-                          ├── → Java Spring Boot :8080 (lógica de negocio)
-                          └── → Python Flask :8000 (analítica)
-                                    ↓
-                               MySQL :3306
+Frontend React → Gateway Node.js :3000
+                     ├── → Java Spring Boot :8080 (lógica de negocio)
+                     └── → Python Flask :8000 (analítica)
+                                   ↓
+                              MySQL :3306
+
+Frontend React → Groq API (externo, solo AgentBubble)
 ```
 
 ### Principio de diseño fundamental
@@ -27,29 +31,40 @@ El frontend **nunca** contacta directamente al backend Java ni al microservicio 
 - Aplicar rate limiting, logging y CORS en un solo lugar
 - Evolución independiente de cada servicio
 
+El agente IA es la única excepción deliberada a este principio: al ser un componente experimental que consume un servicio externo de terceros (Groq), se integra directamente en el cliente sin pasar por el gateway.
+
 ---
 
 ## 2. Descripción de cada servicio
 
-### 2.1 Frontend (HTML/CSS/JavaScript)
+### 2.1 Frontend (React 18 + Vite)
 
-**Tipo:** Aplicación estática  
-**Tecnología:** HTML5, CSS3, JavaScript ES2020 (sin framework)  
-**Comunicación:** Solo HTTP hacia `http://localhost:3000/api`
+**Tipo:** Single Page Application  
+**Tecnología:** React 18, Vite, React Router DOM 6  
+**Puerto de desarrollo:** 5173  
+**Comunicación:** Solo HTTP hacia `http://localhost:3000/api` (gateway), excepto `AgentBubble` que llama directamente a Groq
 
-El frontend utiliza el módulo `api.js` como cliente HTTP centralizado. Todas las rutas pasan por `API.{modulo}.{operacion}()`. El token JWT se lee de `localStorage` y se inyecta automáticamente en cada petición mediante el header `Authorization: Bearer <token>`.
+El frontend utiliza el módulo `api.js` como cliente HTTP centralizado. Todas las rutas pasan por `API.{modulo}.{operacion}()`. El token JWT se lee de `localStorage` vía `AuthContext` y se inyecta automáticamente en cada petición.
 
-**Páginas:**
+**Páginas y componentes principales:**
+
 | Archivo | Módulo |
 |---------|--------|
-| `index.html` | Login |
-| `dashboard.html` | Resumen general |
-| `products.html` | CRUD de productos |
-| `inventory.html` | Movimientos de inventario |
-| `sales.html` | Registro y consulta de ventas |
-| `reports.html` | Reportes de ventas |
-| `predictions.html` | Predicciones y recomendaciones |
-| `users.html` | Gestión de usuarios (solo Admin) |
+| `pages/Login.jsx` | Autenticación |
+| `pages/Dashboard.jsx` | Resumen general |
+| `pages/Products.jsx` | CRUD de productos |
+| `pages/Inventory.jsx` | Movimientos de inventario |
+| `pages/Sales.jsx` | Registro y consulta de ventas |
+| `pages/Reports.jsx` | Reportes de ventas |
+| `pages/Predictions.jsx` | Predicciones y recomendaciones |
+| `pages/Users.jsx` | Gestión de usuarios (solo Admin) |
+| `components/layout/Sidebar.jsx` | Navegación lateral con NavLink |
+| `components/ui/AgentBubble.jsx` | Agente IA conversacional (experimental) |
+| `context/AuthContext.jsx` | Estado global de sesión JWT |
+| `hooks/useToast.js` | Sistema de notificaciones |
+
+**Protección de rutas:**  
+`ProtectedLayout` verifica `isLoggedIn()` del `AuthContext` en cada render. Si el token no existe o está expirado, redirige a `/` (login). Las rutas específicas por rol se controlan en cada página individualmente.
 
 ---
 
@@ -73,7 +88,7 @@ El frontend utiliza el módulo `api.js` como cliente HTTP centralizado. Todas la
 
 El gateway actúa como proxy sin estado; no persiste datos propios.
 
-**Variables de entorno requeridas (.env):**
+**Variables de entorno requeridas (gateway/.env):**
 ```env
 PORT=3000
 JAVA_API_URL=http://localhost:8080
@@ -126,6 +141,9 @@ Si cualquier paso lanza una excepción, el rollback es automático (ACID MySQL).
 - `/auth/login` es el único endpoint público
 - La autorización por rol (ADMIN vs SELLER) se delega al gateway para no duplicar lógica
 
+**Configuración requerida (backend/src/main/resources/application.properties):**  
+Copiar `application.properties.example` como `application.properties` y completar credenciales locales. Este archivo está excluido del repositorio.
+
 ---
 
 ### 2.4 Microservicio Python (Flask)
@@ -148,6 +166,9 @@ Python no está en el sistema para cumplir un requisito de "usar 4 tecnologías"
 | `src/services/database_service.py` | Consultas MySQL con mysql-connector |
 | `src/models/demand_model.py` | Implementación de WMA y regresión lineal |
 
+**Configuración requerida (analytics/config.py):**  
+Copiar `config.py.example` como `config.py` y completar credenciales locales. Este archivo está excluido del repositorio.
+
 **Lógica de selección de modelo en `demand_model.py`:**
 
 ```python
@@ -169,6 +190,41 @@ safety_stock = monthly_forecast × SAFETY_STOCK_PCT (default 20%)
 recommendation = monthly_forecast + safety_stock - stock_current + stock_minimum
 recommendation = max(0, round(recommendation))
 ```
+
+---
+
+### 2.5 Agente IA — AgentBubble (experimental)
+
+**Tipo:** Componente React del frontend  
+**Motor:** Groq API — modelo `llama-3.3-70b-versatile`  
+**Comunicación:** Llamadas directas desde el navegador a `https://api.groq.com/openai/v1/chat/completions`
+
+El agente es un componente flotante (FAB) integrado en `ProtectedLayout` del frontend. Opera de forma completamente independiente al gateway y a los servicios internos; no requiere JWT ni accede a MySQL.
+
+**Características:**
+- Contexto dinámico por módulo: el system prompt incluye el módulo activo del usuario
+- Chips de sugerencias específicos por ruta (`/dashboard`, `/products`, `/sales`, etc.)
+- Detección de estado online/offline mediante ping al iniciar el panel
+- Historial de conversación limitado a los últimos 10 mensajes por sesión (no persiste)
+- Mensajes de error diferenciados: cuota agotada, API key inválida, error de red
+
+**Configuración:**
+```env
+# frontend/.env
+VITE_GROQ_API_KEY=tu_api_key_aqui
+```
+
+```jsx
+// App.jsx — dentro de ProtectedLayout
+<AgentBubble geminiApiKey={import.meta.env.VITE_GROQ_API_KEY} />
+```
+
+> La API key de Groq se obtiene gratuitamente en [console.groq.com](https://console.groq.com). Si no se configura, el agente muestra estado "sin conexión" sin afectar el resto del sistema.
+
+**Limitaciones conocidas en v1.2.0:**
+- Sin acceso a datos en tiempo real del backend
+- Sin persistencia de historial entre sesiones
+- La API key queda expuesta en el bundle del cliente si no se maneja con un proxy backend (previsto para v1.3.0)
 
 ---
 
@@ -214,7 +270,7 @@ Los índices están definidos en `schema.sql` sobre columnas de alta frecuencia 
 3. Java: BCrypt.matches(password, passwordHash) → true
 4. Java: JwtConfig.generateToken(user) → "eyJhbGci..."
 5. Java → Gateway → Frontend: { token, userId, username, role }
-6. Frontend: localStorage.setItem('sm_token', token)
+6. Frontend: localStorage.setItem('sm_token', token)  ← vía AuthContext
 ```
 
 ### Flujo de request protegida
@@ -232,7 +288,7 @@ Los índices están definidos en `schema.sql` sobre columnas de alta frecuencia 
 
 ### Clave JWT compartida
 
-El secreto JWT debe ser **idéntico** en el gateway Node.js (`JWT_SECRET` en `.env`) y en el backend Java (`jwt.secret` en `application.properties`). Si son distintos, el gateway aceptará tokens que Java rechazará, o viceversa.
+El secreto JWT debe ser **idéntico** en el gateway Node.js (`JWT_SECRET` en `gateway/.env`) y en el backend Java (`jwt.secret` en `application.properties`). Si son distintos, el gateway aceptará tokens que Java rechazará, o viceversa.
 
 ---
 
@@ -266,6 +322,17 @@ Todos los errores retornan:
 
 ## 6. Configuración de entornos
 
+### Archivos de configuración excluidos del repositorio
+
+| Archivo | Ubicación | Plantilla disponible |
+|---------|-----------|----------------------|
+| `application.properties` | `backend/src/main/resources/` | `application.properties.example` |
+| `config.py` | `analytics/` | `config.py.example` |
+| `.env` | `gateway/` | Documentado en sección 2.2 |
+| `.env` | `frontend/` | Documentado en sección 2.5 |
+
+Copiar cada plantilla `.example`, renombrarla sin la extensión `.example` y completar los valores locales antes de ejecutar el sistema.
+
 ### Desarrollo local
 
 Todos los servicios corren en localhost con puertos por defecto. No se requiere Docker ni infraestructura adicional.
@@ -278,6 +345,7 @@ Todos los servicios corren en localhost con puertos por defecto. No se requiere 
 - Restringir `cors.allowed-origins` al dominio real del frontend
 - Usar `gunicorn` para el microservicio Python en lugar del servidor de desarrollo Flask
 - Configurar HTTPS en todos los servicios o usar un reverse proxy (nginx)
+- Para el agente IA: mover la API key de Groq a un endpoint proxy en el gateway para no exponerla en el cliente
 
 ---
 
@@ -310,6 +378,14 @@ mysql-connector-python==8.2.0
 pandas==2.1.4
 numpy==1.26.2
 scikit-learn==1.3.2
+```
+
+### Frontend React
+```json
+"react": "^18.x",
+"react-dom": "^18.x",
+"react-router-dom": "^6.x",
+"vite": "^8.x"
 ```
 
 ---
@@ -357,4 +433,4 @@ com.stockmind
 
 ---
 
-*StockMind v1.0.0 — Manual Técnico — Proyecto Académico*
+*StockMind v1.2.0 — Manual Técnico — Proyecto Académico*
