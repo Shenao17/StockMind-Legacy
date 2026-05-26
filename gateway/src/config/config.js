@@ -8,5 +8,6 @@ module.exports = {
     javaApiUrl: process.env.JAVA_API_URL || 'http://localhost:8080',
     pythonApiUrl: process.env.PYTHON_API_URL || 'http://localhost:8000',
     jwtSecret: process.env.JWT_SECRET || 'stockmind_dev_secret',
-    nodeEnv: process.env.NODE_ENV || 'development'
+    nodeEnv: process.env.NODE_ENV || 'development',
+    groqApiKey: process.env.GROQ_API_KEY || ''   // ← esta línea
 };

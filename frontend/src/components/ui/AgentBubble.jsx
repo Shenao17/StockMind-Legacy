@@ -505,58 +505,35 @@ function now() {
   return new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── Llamada a Groq ─────────────────────────────────────────────────────────
-async function callGemini(messages, currentPage, apiKey) {
-  const pageCtx = PAGE_CONTEXT[currentPage] || { label: currentPage };
+// ─── Llamada al gateway (proxy seguro hacia Groq) ────────────────────────────
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:3000';
 
-  const systemPrompt = `Eres el asistente de inteligencia artificial de StockMind, una plataforma de gestión de inventario y ventas para pequeñas y medianas empresas.
+async function callGemini(messages, currentPage) {
+  const token = localStorage.getItem('sm_token');
 
-Tu rol: ayudar al usuario a entender sus datos de negocio, responder preguntas sobre inventario, ventas, predicciones de demanda y reportes. Sé conciso, directo y útil.
-
-Contexto actual: el usuario está en el módulo "${pageCtx.label}".
-
-Restricciones:
-- Responde siempre en español
-- Mantén respuestas cortas (máx 3-4 oraciones salvo que se pida más detalle)
-- Si el usuario pregunta algo que requiere datos reales del sistema, indica amablemente que necesitas acceso a la API del backend para responder con precisión
-- Usa un tono profesional pero cercano
-- No inventes datos numéricos específicos; en su lugar describe cómo consultarlos`;
-
-  const groqMessages = [
-    { role: 'system', content: systemPrompt },
-    ...messages
-      .filter(m => m.role !== 'system')
-      .map(m => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.text,
-      })),
-  ];
-
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch(`${GATEWAY_URL}/api/agent/query`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: groqMessages,
-      temperature: 0.7,
-      max_tokens: 400,
+      messages,
+      currentPage,
     }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    throw new Error(err?.error || `HTTP ${res.status}`);
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || 'Sin respuesta del agente.';
+  return data.reply || 'Sin respuesta del agente.';
 }
 
 // ─── Componente principal ────────────────────────────────────────────────────
-export default function AgentBubble({ geminiApiKey }) {
+export default function AgentBubble() {
   const location = useLocation();
   const { user } = useAuth();
 
@@ -612,19 +589,16 @@ export default function AgentBubble({ geminiApiKey }) {
   async function checkStatus() {
     setAgentStatus('unknown');
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${geminiApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 5,
-        }),
+      const token = localStorage.getItem('sm_token');
+      const res = await fetch(`${GATEWAY_URL}/api/agent/status`, {
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-      setAgentStatus(res.ok ? 'online' : 'offline');
+      if (res.ok) {
+        const data = await res.json();
+        setAgentStatus(data.available ? 'online' : 'offline');
+      } else {
+        setAgentStatus('offline');
+      }
     } catch {
       setAgentStatus('offline');
     }
@@ -641,7 +615,7 @@ export default function AgentBubble({ geminiApiKey }) {
 
     try {
       const contextMessages = newMessages.slice(-10);
-      const reply = await callGemini(contextMessages, currentPage, geminiApiKey);
+      const reply = await callGemini(contextMessages, currentPage);
       setAgentStatus('online');
       setMessages(prev => [...prev, { role: 'agent', text: reply, time: now() }]);
     } catch (err) {
@@ -651,7 +625,7 @@ export default function AgentBubble({ geminiApiKey }) {
       const isAuth  = msg.includes('API_KEY') || msg.includes('403') || msg.includes('401');
       setAgentStatus('offline');
       let friendlyMsg = '⚠️ El agente no está disponible en este momento. Intenta más tarde.';
-      if (isQuota) friendlyMsg = '⚠️ Se agotó la cuota de la API.';
+      if (isQuota) friendlyMsg = '⚠️ Se agotó la cuota de la API. Verifica tu plan en Google AI Studio.';
       if (isAuth)  friendlyMsg = '⚠️ API key inválida o sin permisos. Revisa la configuración.';
       setMessages(prev => [...prev, {
         role: 'agent',

@@ -27,6 +27,7 @@ const salesRoutes = require('./src/routes/sales.routes');
 const userRoutes = require('./src/routes/users.routes');
 const reportRoutes = require('./src/routes/reports.routes');
 const predictionRoutes = require('./src/routes/predictions.routes');
+const agentRoutes      = require('./src/routes/agent.routes');
 
 // Importar middlewares
 const errorHandler = require('./src/middleware/errorHandler.middleware');
@@ -87,6 +88,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/predictions', predictionRoutes);
+app.use('/api/agent',       agentRoutes);                           // Rutas del asistente IA (experimental)
 
 // Ruta no encontrada (404)
 app.use((req, res) => {

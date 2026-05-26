@@ -62,7 +62,7 @@ function ProtectedLayout({ showToast }) {
           <Route path="*"            element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
-      <AgentBubble geminiApiKey="######"/>
+      <AgentBubble />
     </div>
   );
 }
